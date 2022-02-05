@@ -1,0 +1,10 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="MinicraftLauncher">
+    <output-path>$PROJECT_DIR$/out/artifacts/MinicraftLauncher</output-path>
+    <root id="archive" name="MinicraftLauncher.jar">
+      <element id="archive" name="MinicraftLauncher.jar">
+        <element id="module-output" name="MinicraftLauncher" />
+      </element>
+    </root>
+  </artifact>
+</component>

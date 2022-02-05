@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<jnlp spec="1.0" xmlns:jfx="http://javafx.com" href="MinicraftLauncher.jnlp">
+  <information>
+    <title>Minicraft Launcher</title>
+    <vendor>Unknown</vendor>
+    <description>MinicraftLauncher</description>
+    <offline-allowed/>
+  </information>
+  <resources>
+    <j2se version="1.6+" href="http://java.sun.com/products/autodl/j2se"/>
+    <jar href="MinicraftLauncher.jar" size="33838" download="eager" />
+    <jar href="lib\javafx-sdk-11.0.2.jar" size="283" download="eager" />
+  </resources>
+  <jfx:javafx-desc  width="600" height="400" main-class="application.Main"  name="MinicraftLauncher" />
+  <update check="background"/>
+</jnlp>
