@@ -1,6 +1,8 @@
 package launcher;
 
 import java.awt.*;
+
+import parser.GetModParser;
 import parser.GetReleaseParser;
 
 import java.awt.event.ActionEvent;
@@ -16,17 +18,26 @@ import java.util.ArrayList;
 public class MinicraftLauncher {
     Frame f = new Frame("Minicrafters Launcher");
     public MinicraftVersion minicraftVersion = new MinicraftVersion();
-    public ArrayList<MinicraftVersion> versions;
+    public MinicraftMods minicraftMods = new MinicraftMods();
+    public ArrayList<MinicraftVersion> versions = new ArrayList<MinicraftVersion>();
+    public ArrayList<MinicraftMods> mods;
     final Choice ch = new Choice();
+    final Choice modList = new Choice();
     final Checkbox modded = new Checkbox("Modded?", false);
     private Button playButton;
     private Button downloadButton;
+    private Button installModButton;
+
 
     public MinicraftLauncher() {
         this.loadMinicraftVersions();
-        this.versions = new ArrayList<MinicraftVersion>();
         this.initializeStartingScene();
         f.setVisible(true);
+        this.downloadButton.addActionListener(new installListener());
+        this.playButton.addActionListener(new playListener());
+
+            this.initializeModdedScreen();
+
         new WindowCloser();
     }
 
@@ -51,7 +62,7 @@ public class MinicraftLauncher {
             this.versions = (ArrayList<MinicraftVersion>) ois.readObject();
             ois.close();
             fin.close();
-        } catch (Exception ex) {
+        } catch (Exception ignored) {
         }
         final ArrayList<MinicraftVersion> githubVersions = GetReleaseParser.parseGithubReleases();
         for (final MinicraftVersion v : githubVersions) {
@@ -73,22 +84,22 @@ public class MinicraftLauncher {
         try {
             final FileInputStream fin = new FileInputStream(filePath);
             final ObjectInputStream ois = new ObjectInputStream(fin);
-            this.versions = (ArrayList<MinicraftVersion>) ois.readObject();
+            this.mods = (ArrayList<MinicraftMods>) ois.readObject();
             ois.close();
             fin.close();
-        } catch (Exception ex) {
+        } catch (Exception ignored) {
         }
-        final ArrayList<MinicraftVersion> githubVersions = GetReleaseParser.parseGithubReleases();
-        for (final MinicraftVersion v : githubVersions) {
+        final ArrayList<MinicraftMods> githubVersions = GetModParser.parseGithubReleases();
+        for (final MinicraftMods v : githubVersions) {
             boolean addVersion = true;
-            for (final MinicraftVersion v2 : this.versions) {
+            for (final MinicraftMods v2 : this.mods) {
                 if (v.name.equals(v2.name)) {
                     addVersion = false;
                     break;
                 }
             }
             if (addVersion) {
-                this.versions.add(v);
+                this.mods.add(v);
             }
         }
     }
@@ -109,9 +120,9 @@ public class MinicraftLauncher {
         final Label versionDescriptionLabel = new Label("");
         this.playButton = new Button("Play");
         this.downloadButton = new Button("Download");
-        Boolean downloaded = minicraftVersion.downloaded;
+        Boolean downloaded = versions.get(ch.getSelectedIndex()).downloaded;
         String newVersion = ch.getSelectedItem();
-        String description = minicraftVersion.description;
+        String description = versions.get(ch.getSelectedIndex()).description;
         versionDescriptionLabel.setText(description);
         f.add(versionSelectLabel);
         f.add(ch);
@@ -123,25 +134,40 @@ public class MinicraftLauncher {
             f.add(downloadButton);
         }
         f.add(modded);
-        f.add(versionDescriptionLabel);
-        installListener install = new installListener();
-        playListener play = new playListener();
-        this.downloadButton.addActionListener(install);
-        this.playButton.addActionListener(play);
+        f.add(versionDescriptionLabel).setLocation(0,20);
     }
+
+    public void initializeModdedScreen() {
+        f.setLayout(new FlowLayout(FlowLayout.LEFT));
+        final Label versionSelectLabel = new Label("Select Mod: ");
+        loadMinicraftVersions();
+        for (MinicraftMods mods : mods) {
+            modList.addItem(mods.name);
+        }
+        this.installModButton = new Button("Install");
+        Boolean downloaded = minicraftMods.downloaded;
+        f.add(versionSelectLabel);
+        f.add(modList);
+        f.remove(installModButton);
+        if (!downloaded) {
+            f.add(installModButton);
+        }
+        this.installModButton.addActionListener(new installModsListener());
+    }
+
 
     private void installNewMinicraftVersion(MinicraftVersion version) {
         loadMinicraftVersions();
         try {
             final URL fileUrl = new URL(versions.get(ch.getSelectedIndex()).fileurl);
             final ReadableByteChannel rbc = Channels.newChannel(fileUrl.openStream());
-            final File f = new File(getSaveDirectory() + version.name + ".jar");
+            final File f = new File(getSaveDirectory() + versions.get(ch.getSelectedIndex()).name + ".jar");
             f.getParentFile().mkdirs();
-            final FileOutputStream fos = new FileOutputStream(getSaveDirectory() + version.name + ".jar");
+            final FileOutputStream fos = new FileOutputStream(getSaveDirectory() + versions.get(ch.getSelectedIndex()).name + ".jar");
             fos.getChannel().transferFrom(rbc, 0L, Long.MAX_VALUE);
             fos.close();
-            version.localFile = f;
-            version.downloaded = true;
+            versions.get(ch.getSelectedIndex()).localFile = f;
+            versions.get(ch.getSelectedIndex()).downloaded = true;
             this.f.remove(downloadButton);
             this.f.add(playButton);
             this.saveMinicraftVersions();
@@ -149,6 +175,25 @@ public class MinicraftLauncher {
             e.printStackTrace();
         }
     }
+    private void installNewMinicraftMod(MinicraftMods mod) {
+        loadMinicraftVersions();
+        try {
+            final URL fileUrl = new URL(mods.get(modList.getSelectedIndex()).fileurl);
+            final ReadableByteChannel rbc = Channels.newChannel(fileUrl.openStream());
+            final File f = new File(getSaveDirectory() + mod.name + ".jar");
+            f.getParentFile().mkdirs();
+            final FileOutputStream fos = new FileOutputStream(getSaveDirectory() + mod.name + ".jar");
+            fos.getChannel().transferFrom(rbc, 0L, Long.MAX_VALUE);
+            fos.close();
+            mod.localFile = f;
+            mod.downloaded = true;
+            this.f.remove(installModButton);
+            this.saveMinicraftVersions();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
     public static String getSaveDirectory() {
         final String OS = System.getProperty("os.name").toLowerCase();
@@ -170,13 +215,23 @@ public class MinicraftLauncher {
         }
     }
 
-    class playListener implements ActionListener {
+    class installModsListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
-            new MinicraftVersion().play();
+            installNewMinicraftMod(minicraftMods);
         }
     }
-    class WindowCloser extends WindowAdapter {
+
+    static class playListener implements ActionListener {
+
+        final MinicraftVersion minicraftVersion = new MinicraftVersion();
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            minicraftVersion.play(minicraftVersion.localFile);
+        }
+    }
+
+    static class WindowCloser extends WindowAdapter {
         @Override
         public void windowClosing(WindowEvent e) {
             super.windowClosing(e);

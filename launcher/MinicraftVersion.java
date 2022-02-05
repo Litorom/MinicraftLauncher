@@ -11,9 +11,9 @@ public class MinicraftVersion implements Serializable
     public String fileurl;
     public File localFile;
     public boolean downloaded;
-    
-    public void play() {
-        final ProcessBuilder pb = new ProcessBuilder(new String[] { "java", "-jar", this.localFile.getAbsolutePath() });
+
+    public void play(File f) {
+        final ProcessBuilder pb = new ProcessBuilder("java", "-jar", f.getAbsolutePath());
         pb.directory(new File(MinicraftLauncher.getSaveDirectory()));
         try {
             pb.start();
